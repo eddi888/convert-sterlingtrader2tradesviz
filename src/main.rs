@@ -1,9 +1,9 @@
-use std::fs::File;
-use std::io::{Read, Cursor};
-use std::path::Path;
-use csv::ReaderBuilder;
+use anyhow::{bail, Context, Result};
 use clap::Parser;
-use anyhow::{Result, Context, bail};
+use csv::ReaderBuilder;
+use std::fs::File;
+use std::io::{Cursor, Read};
+use std::path::Path;
 
 // Hilfsfunktionen für die Konvertierung
 fn convert_date(date_str: &str) -> Result<String> {
@@ -11,19 +11,25 @@ fn convert_date(date_str: &str) -> Result<String> {
     if date_parts.len() != 3 {
         bail!("Ungültiges Datumsformat: {}", date_str);
     }
-    Ok(format!("20{}{}{}", date_parts[2], date_parts[1], date_parts[0]))
+    Ok(format!(
+        "20{}{}{}",
+        date_parts[2], date_parts[1], date_parts[0]
+    ))
 }
 
 fn convert_price(price_whole: &str, price_decimal: &str) -> Result<String> {
-    let whole: i32 = price_whole.parse()
+    let whole: i32 = price_whole
+        .parse()
         .with_context(|| format!("Ungültiger Preis: {}", price_whole))?;
-    let decimal: i32 = price_decimal.parse()
+    let decimal: i32 = price_decimal
+        .parse()
         .with_context(|| format!("Ungültige Dezimalstellen: {}", price_decimal))?;
     Ok(format!("{}.{:02}", whole, decimal))
 }
 
 fn convert_quantity(amount: &str, trade_type: &str) -> Result<i32> {
-    let amount: i32 = amount.parse()
+    let amount: i32 = amount
+        .parse()
         .with_context(|| format!("Ungültige Menge: {}", amount))?;
     if !matches!(trade_type, "B" | "S") {
         bail!("Ungültiger Handelstyp: {}", trade_type);
@@ -72,21 +78,37 @@ fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<
         .has_headers(false)
         .from_reader(cursor);
 
-    let mut writer = csv::Writer::from_path(output_path)
-        .with_context(|| format!("Konnte Ausgabedatei nicht erstellen: {}", output_path.display()))?;
+    let mut writer = csv::Writer::from_path(output_path).with_context(|| {
+        format!(
+            "Konnte Ausgabedatei nicht erstellen: {}",
+            output_path.display()
+        )
+    })?;
 
     // Schreibe Header
     writer.write_record(&[
-        "date", "time", "symbol", "asset_type", "price",
-        "currency", "quantity", "commission", "tags", "notes"
+        "date",
+        "time",
+        "symbol",
+        "asset_type",
+        "price",
+        "currency",
+        "quantity",
+        "commission",
+        "tags",
+        "notes",
     ])?;
 
     let mut count = 0;
     for result in reader.records() {
-        let record = result.with_context(|| format!("Fehler beim Lesen von Zeile {}", count + 1))?;
+        let record =
+            result.with_context(|| format!("Fehler beim Lesen von Zeile {}", count + 1))?;
 
         if record.len() < 7 {
-            bail!("Ungültiges Format in Zeile {}: Zu wenige Spalten", count + 1);
+            bail!(
+                "Ungültiges Format in Zeile {}: Zu wenige Spalten",
+                count + 1
+            );
         }
 
         // Konvertiere Datum
@@ -116,14 +138,20 @@ fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<
         ])?;
 
         if verbose {
-            println!("Verarbeite: {} {} {} @ {}", datum, &record[2], quantity, preis);
+            println!(
+                "Verarbeite: {} {} {} @ {}",
+                datum, &record[2], quantity, preis
+            );
         }
 
         count += 1;
     }
 
     writer.flush()?;
-    println!("Konvertierung abgeschlossen. {} Datensätze verarbeitet.", count);
+    println!(
+        "Konvertierung abgeschlossen. {} Datensätze verarbeitet.",
+        count
+    );
     println!("Ausgabe in: {}", output_path.display());
     Ok(())
 }
@@ -169,12 +197,12 @@ mod tests {
 
         // Erstelle eine temporäre Ausgabedatei
         let output_file = NamedTempFile::new()?;
-        
+
         // Konvertiere die Datei
         convert_file(
             Path::new(input_file.path()),
             Path::new(output_file.path()),
-            false
+            false,
         )?;
 
         // Lese die Ausgabedatei
@@ -191,19 +219,19 @@ mod tests {
         let fields: Vec<&str> = output_lines[1].split(',').collect();
         assert_eq!(fields[0], "20250401"); // Datum
         assert_eq!(fields[1], "09:30:00"); // Zeit
-        assert_eq!(fields[2], "AAPL");    // Symbol
-        assert_eq!(fields[3], "stock");   // Asset Type
+        assert_eq!(fields[2], "AAPL"); // Symbol
+        assert_eq!(fields[3], "stock"); // Asset Type
         assert_eq!(fields[4], "150.50"); // Preis
-        assert_eq!(fields[5], "USD");     // Währung
-        assert_eq!(fields[6], "1000");   // Menge (positiv für Kauf)
+        assert_eq!(fields[5], "USD"); // Währung
+        assert_eq!(fields[6], "1000"); // Menge (positiv für Kauf)
 
         // Überprüfe zweite Zeile (Verkauf)
         let fields: Vec<&str> = output_lines[2].split(',').collect();
         assert_eq!(fields[0], "20250401"); // Datum
         assert_eq!(fields[1], "09:35:00"); // Zeit
-        assert_eq!(fields[2], "AAPL");    // Symbol
+        assert_eq!(fields[2], "AAPL"); // Symbol
         assert_eq!(fields[4], "151.25"); // Preis
-        assert_eq!(fields[6], "-500");   // Menge (negativ für Verkauf)
+        assert_eq!(fields[6], "-500"); // Menge (negativ für Verkauf)
 
         Ok(())
     }
@@ -212,14 +240,14 @@ mod tests {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let input_path = Path::new(&cli.input);
-    
+
     if !input_path.exists() {
         bail!("Eingabedatei existiert nicht: {}", input_path.display());
     }
 
     let output_path = match &cli.output {
         Some(ref path) => Path::new(path).to_path_buf(),
-        None => input_path.with_extension("txt.cust.csv")
+        None => input_path.with_extension("txt.cust.csv"),
     };
 
     convert_file(input_path, &output_path, cli.verbose)
