@@ -86,7 +86,7 @@ fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<
     })?;
 
     // Schreibe Header
-    writer.write_record(&[
+    writer.write_record([
         "date",
         "time",
         "symbol",
@@ -120,11 +120,11 @@ fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<
             .with_context(|| format!("Ungültiger Preis in Zeile {}", count + 1))?;
 
         // Konvertiere Menge
-        let quantity = convert_quantity(&record[3], &record[6].trim())
+        let quantity = convert_quantity(&record[3], record[6].trim())
             .with_context(|| format!("Ungültige Menge in Zeile {}", count + 1))?;
 
         // Schreibe Datensatz
-        writer.write_record(&[
+        writer.write_record([
             &datum,
             &record[1],
             &record[2],
