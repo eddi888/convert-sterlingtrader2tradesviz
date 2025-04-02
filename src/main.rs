@@ -26,7 +26,11 @@ fn convert_price(price_whole: &str, price_decimal: &str) -> Result<String> {
         .with_context(|| format!("Ungültige Dezimalstellen: {}", price_decimal))?;
     // Wenn die Dezimalstelle einstellig ist UND der String auch einstellig ist,
     // multipliziere mit 10 (z.B. "6" wird zu "60")
-    let decimal = if decimal < 10 && price_decimal.len() == 1 { decimal * 10 } else { decimal };
+    let decimal = if decimal < 10 && price_decimal.len() == 1 {
+        decimal * 10
+    } else {
+        decimal
+    };
     Ok(format!("{}.{:02}", whole, decimal))
 }
 
@@ -42,8 +46,8 @@ fn convert_quantity(amount: &str, trade_type: &str) -> Result<i32> {
 
 #[derive(Parser)]
 #[command(name = "Sterling Trader Converter")]
-#[command(author = "Eddi")]
-#[command(version = "1.0")]
+#[command(author = "eddi888")]
+#[command(version = "1.1.0")]
 #[command(about = "Konvertiert Sterling Trader Exportdateien in das TradesViz Format")]
 struct Cli {
     /// Eingabedatei (Sterling Trader Export)
