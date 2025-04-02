@@ -97,10 +97,26 @@ Um Ihre Trades aus Sterling Trader zu exportieren:
 
 ## Eingabeformat
 
-Das Tool erwartet Sterling Trader CSV-Exporte mit folgendem Format:
+Das Tool erwartet Sterling Trader CSV-Exporte in einem der folgenden Formate:
+
+### Format mit Dezimalstellen (7 Spalten)
 ```
-DD/MM/YY,HH:MM:SS,SYMBOL,MENGE,PREIS_GANZZAHL,PREIS_DEZIMAL,TYP
+Datum,Zeit,Symbol,Menge,Preis_Ganzzahl,Preis_Dezimal,Typ
+01/04/25,09:30:00,AAPL,1000,150,50,B
 ```
+
+### Format ohne Dezimalstellen (6 Spalten)
+```
+Datum,Zeit,Symbol,Menge,Preis_Ganzzahl,Typ
+01/04/25,09:30:00,AAPL,1000,150,B
+```
+
+Hinweise:
+- Datum: Format DD/MM/YY
+- Zeit: Format HH:MM:SS
+- Preis: Bei 7 Spalten werden Ganzzahl und Dezimalstellen kombiniert (z.B. "150,50" wird zu "150.50")
+- Typ: B = Buy (Kauf), S = Sell (Verkauf)
+
 
 Beispiel:
 ```
