@@ -24,6 +24,9 @@ fn convert_price(price_whole: &str, price_decimal: &str) -> Result<String> {
     let decimal: i32 = price_decimal
         .parse()
         .with_context(|| format!("Ungültige Dezimalstellen: {}", price_decimal))?;
+    // Wenn die Dezimalstelle einstellig ist UND der String auch einstellig ist,
+    // multipliziere mit 10 (z.B. "6" wird zu "60")
+    let decimal = if decimal < 10 && price_decimal.len() == 1 { decimal * 10 } else { decimal };
     Ok(format!("{}.{:02}", whole, decimal))
 }
 
@@ -176,6 +179,9 @@ mod tests {
         assert_eq!(convert_price("2", "34").unwrap(), "2.34");
         assert_eq!(convert_price("0", "05").unwrap(), "0.05");
         assert_eq!(convert_price("10", "00").unwrap(), "10.00");
+        // Test für einstellige Dezimalstellen (z.B. 6 bedeutet 60 Cents)
+        assert_eq!(convert_price("1", "6").unwrap(), "1.60");
+        assert_eq!(convert_price("2", "5").unwrap(), "2.50");
         assert!(convert_price("invalid", "34").is_err());
         assert!(convert_price("2", "invalid").is_err());
     }
