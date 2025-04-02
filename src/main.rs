@@ -79,6 +79,7 @@ fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<
     let mut reader = ReaderBuilder::new()
         .delimiter(b',')
         .has_headers(false)
+        .flexible(true)
         .from_reader(cursor);
 
     let mut writer = csv::Writer::from_path(output_path).with_context(|| {
@@ -107,9 +108,10 @@ fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<
         let record =
             result.with_context(|| format!("Fehler beim Lesen von Zeile {}", count + 1))?;
 
-        if record.len() < 7 {
+        // Überprüfe Mindestanzahl der Spalten (mindestens 6 für Zeilen ohne Dezimalstellen)
+        if record.len() < 6 {
             bail!(
-                "Ungültiges Format in Zeile {}: Zu wenige Spalten",
+                "Ungültiges Format in Zeile {}: Zu wenige Spalten (mindestens 6 benötigt)",
                 count + 1
             );
         }
@@ -118,12 +120,21 @@ fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<
         let datum = convert_date(&record[0])
             .with_context(|| format!("Ungültiges Datumsformat in Zeile {}", count + 1))?;
 
+        // Bestimme Position des Handelstyps (B/S)
+        let (price_decimal, trade_type) = if record[5].trim() == "B" || record[5].trim() == "S" {
+            // Fall ohne Dezimalstellen
+            ("0", &record[5])
+        } else {
+            // Normaler Fall mit Dezimalstellen
+            (&record[5], &record[6])
+        };
+
         // Konvertiere Preis
-        let preis = convert_price(&record[4], &record[5])
+        let preis = convert_price(&record[4], price_decimal)
             .with_context(|| format!("Ungültiger Preis in Zeile {}", count + 1))?;
 
         // Konvertiere Menge
-        let quantity = convert_quantity(&record[3], record[6].trim())
+        let quantity = convert_quantity(&record[3], trade_type.trim())
             .with_context(|| format!("Ungültige Menge in Zeile {}", count + 1))?;
 
         // Schreibe Datensatz
@@ -198,8 +209,12 @@ mod tests {
     fn test_full_conversion() -> Result<()> {
         // Erstelle eine temporäre Eingabedatei
         let mut input_file = NamedTempFile::new()?;
+        // Test für normale Zeilen (mit Dezimalstellen)
         writeln!(input_file, "01/04/25,09:30:00,AAPL,1000,150,50,B")?;
         writeln!(input_file, "01/04/25,09:35:00,AAPL,500,151,25,S")?;
+        // Test für Zeilen ohne Dezimalstellen
+        writeln!(input_file, "01/04/25,09:40:00,MSFT,1000,160,B")?;
+        writeln!(input_file, "01/04/25,09:45:00,MSFT,500,161,S")?;
 
         // Erstelle eine temporäre Ausgabedatei
         let output_file = NamedTempFile::new()?;
@@ -221,23 +236,31 @@ mod tests {
             "date,time,symbol,asset_type,price,currency,quantity,commission,tags,notes"
         );
 
-        // Überprüfe erste Zeile (Kauf)
+        // Überprüfe erste Zeile (Kauf mit Dezimalstellen)
         let fields: Vec<&str> = output_lines[1].split(',').collect();
         assert_eq!(fields[0], "20250401"); // Datum
         assert_eq!(fields[1], "09:30:00"); // Zeit
         assert_eq!(fields[2], "AAPL"); // Symbol
-        assert_eq!(fields[3], "stock"); // Asset Type
         assert_eq!(fields[4], "150.50"); // Preis
-        assert_eq!(fields[5], "USD"); // Währung
-        assert_eq!(fields[6], "1000"); // Menge (positiv für Kauf)
+        assert_eq!(fields[6], "1000"); // Menge
 
-        // Überprüfe zweite Zeile (Verkauf)
+        // Überprüfe zweite Zeile (Verkauf mit Dezimalstellen)
         let fields: Vec<&str> = output_lines[2].split(',').collect();
-        assert_eq!(fields[0], "20250401"); // Datum
-        assert_eq!(fields[1], "09:35:00"); // Zeit
-        assert_eq!(fields[2], "AAPL"); // Symbol
         assert_eq!(fields[4], "151.25"); // Preis
-        assert_eq!(fields[6], "-500"); // Menge (negativ für Verkauf)
+        assert_eq!(fields[6], "-500"); // Menge
+
+        // Überprüfe dritte Zeile (Kauf ohne Dezimalstellen)
+        let fields: Vec<&str> = output_lines[3].split(',').collect();
+        assert_eq!(fields[2], "MSFT"); // Symbol
+        assert_eq!(fields[4], "160.00"); // Preis (ohne Dezimalstellen)
+        assert_eq!(fields[6], "1000"); // Menge
+
+        // Überprüfe vierte Zeile (Verkauf ohne Dezimalstellen)
+        let fields: Vec<&str> = output_lines[4].split(',').collect();
+        assert_eq!(fields[3], "stock"); // Asset Type
+        assert_eq!(fields[4], "161.00"); // Preis (ohne Dezimalstellen)
+        assert_eq!(fields[5], "USD"); // Währung
+        assert_eq!(fields[6], "-500"); // Menge
 
         Ok(())
     }
