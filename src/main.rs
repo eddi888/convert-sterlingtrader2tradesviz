@@ -48,10 +48,11 @@ fn convert_quantity(amount: &str, trade_type: &str) -> Result<i32> {
 mod windows {
     use anyhow::Result;
     use std::path::PathBuf;
-    use winreg::enums::*;
-    use winreg::RegKey;
 
     pub fn install_context_menu() -> Result<()> {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let path = r"Software\Classes\.csv\shell\Mutate\command";
         let (key, _) = hkcu.create_subkey(path)?;
@@ -64,6 +65,9 @@ mod windows {
     }
 
     pub fn uninstall_context_menu() -> Result<()> {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let path = r"Software\Classes\.csv\shell\Mutate";
         hkcu.delete_subkey_all(path)?;
