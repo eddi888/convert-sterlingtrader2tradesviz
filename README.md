@@ -56,6 +56,21 @@ Ein modernes Kommandozeilen-Tool, entwickelt in Rust 🦀 und mit AI Flow 🤖 g
 - 📝 Verbose-Modus für detaillierte Ausgaben
 - ⚙️ Automatische oder benutzerdefinierte Ausgabedateien
 
+## 🛠️ Entwicklung
+
+### Git Hooks
+
+Dieses Projekt verwendet Git Hooks für Qualitätssicherung. Um die Hooks zu aktivieren:
+
+```bash
+# Setze den Git-Hooks-Pfad auf das .githooks Verzeichnis
+git config core.hooksPath .githooks
+```
+
+Die Hooks führen folgende Prüfungen vor jedem Commit durch:
+- `cargo fmt --all -- --check`: Überprüft die Code-Formatierung
+- `cargo clippy`: Führt statische Code-Analyse durch
+
 ## 📥 Installation
 
 ### 💫 Download

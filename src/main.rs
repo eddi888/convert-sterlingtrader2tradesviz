@@ -55,10 +55,10 @@ mod windows {
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let path = r"Software\Classes\.csv\shell\Mutate\command";
         let (key, _) = hkcu.create_subkey(path)?;
-        
+
         let exe_path = std::env::current_exe()?;
-        let command = format!("\"{}\" convert \"%1\"" , exe_path.display());
-        
+        let command = format!("\"{}\" convert \"%1\"", exe_path.display());
+
         key.set_value("", &command)?;
         Ok(())
     }
