@@ -74,7 +74,7 @@ mod windows {
 #[derive(Parser)]
 #[command(name = "Mutate")]
 #[command(author = "eddi888")]
-#[command(version = "1.1.0")]
+#[command(version = "1.2.0")]
 #[command(about = "Konvertiert Sterling Trader Exportdateien in das TradesViz Format")]
 struct Cli {
     /// Eingabedatei (Sterling Trader Export)
