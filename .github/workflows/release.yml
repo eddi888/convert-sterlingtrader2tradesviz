@@ -51,6 +51,7 @@ jobs:
             target: x86_64-unknown-freebsd
             artifact_name: mutate
             asset_name: mutate-freebsd-amd64
+            cross: true
 
     steps:
       - uses: actions/checkout@v2
@@ -62,11 +63,17 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross
+
       - name: Build Release
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target ${{ matrix.target }}
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
 
       - name: Prepare asset
         shell: bash
