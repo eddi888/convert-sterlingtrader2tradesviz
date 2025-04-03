@@ -44,14 +44,40 @@ fn convert_quantity(amount: &str, trade_type: &str) -> Result<i32> {
     Ok(if trade_type == "S" { -amount } else { amount })
 }
 
+#[cfg(target_os = "windows")]
+mod windows {
+    use anyhow::Result;
+    use std::path::PathBuf;
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    pub fn install_context_menu() -> Result<()> {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let path = r"Software\Classes\.csv\shell\Mutate\command";
+        let (key, _) = hkcu.create_subkey(path)?;
+        
+        let exe_path = std::env::current_exe()?;
+        let command = format!("\"{}\" convert \"%1\"" , exe_path.display());
+        
+        key.set_value("", &command)?;
+        Ok(())
+    }
+
+    pub fn uninstall_context_menu() -> Result<()> {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let path = r"Software\Classes\.csv\shell\Mutate";
+        hkcu.delete_subkey_all(path)?;
+        Ok(())
+    }
+}
+
 #[derive(Parser)]
-#[command(name = "Sterling Trader Converter")]
+#[command(name = "Mutate")]
 #[command(author = "eddi888")]
 #[command(version = "1.1.0")]
 #[command(about = "Konvertiert Sterling Trader Exportdateien in das TradesViz Format")]
 struct Cli {
     /// Eingabedatei (Sterling Trader Export)
-    #[arg(required = true)]
     input: String,
 
     /// Ausgabedatei (Optional, Standard: <input>.txt.cust.csv)
@@ -61,6 +87,16 @@ struct Cli {
     /// Zeige detaillierte Informationen während der Konvertierung
     #[arg(short, long)]
     verbose: bool,
+
+    #[cfg(target_os = "windows")]
+    /// Installiere Windows-Kontextmenü Integration
+    #[arg(long)]
+    install: bool,
+
+    #[cfg(target_os = "windows")]
+    /// Deinstalliere Windows-Kontextmenü Integration
+    #[arg(long)]
+    uninstall: bool,
 }
 
 fn convert_file(input_path: &Path, output_path: &Path, verbose: bool) -> Result<()> {
@@ -272,13 +308,27 @@ mod tests {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let input_path = Path::new(&cli.input);
 
+    #[cfg(target_os = "windows")]
+    {
+        if cli.install {
+            windows::install_context_menu()?;
+            println!("Windows-Kontextmenü wurde erfolgreich installiert!");
+            return Ok(());
+        }
+        if cli.uninstall {
+            windows::uninstall_context_menu()?;
+            println!("Windows-Kontextmenü wurde erfolgreich entfernt!");
+            return Ok(());
+        }
+    }
+
+    let input_path = Path::new(&cli.input);
     if !input_path.exists() {
         bail!("Eingabedatei existiert nicht: {}", input_path.display());
     }
 
-    let output_path = match &cli.output {
+    let output_path = match cli.output {
         Some(ref path) => Path::new(path).to_path_buf(),
         None => input_path.with_extension("txt.cust.csv"),
     };

@@ -46,6 +46,11 @@ jobs:
             target: x86_64-apple-darwin
             artifact_name: mutate
             asset_name: mutate-macos-amd64
+          - os: ubuntu-latest
+            platform: freebsd
+            target: x86_64-unknown-freebsd
+            artifact_name: mutate
+            asset_name: mutate-freebsd-amd64
 
     steps:
       - uses: actions/checkout@v2
